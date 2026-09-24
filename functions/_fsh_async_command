@@ -3,21 +3,27 @@
 #
 # Run a chroma lookup outside the ZLE hot path.
 #
-# Optional $1 - --capture-stderr, merge standard error into the cached output
+# Optional flags, in any order:
+#   --capture-stderr  merge standard error into the cached output
+#   --raw             leave _fsh_command_output empty; the caller reads the
+#                     cached text from _fsh_state[$key-cache] itself
 # $1 - unique _fsh_state cache key after optional flags
 # $2... - command and arguments, passed without string evaluation
 #
-# Output is returned in _fsh_command_output. A fresh or stale cache is returned
-# immediately. When the cache is stale, one background worker refreshes it.
+# Output is returned in _fsh_command_output, one element per line. A fresh or
+# stale cache is returned immediately. When the cache is stale, one background
+# worker refreshes it. Splitting a large output into lines on every keystroke
+# costs more than the rest of this function, so a caller that only compares
+# or rarely parses the text passes --raw.
 
 builtin emulate -L zsh
 builtin setopt extended_glob warn_create_global typeset_silent no_short_loops rc_quotes no_auto_pushd
 
-integer capture_stderr=0
-if [[ $1 == --capture-stderr ]]; then
-  capture_stderr=1
+integer capture_stderr=0 raw=0
+while [[ $1 == --(capture-stderr|raw) ]]; do
+  [[ $1 == --raw ]] && raw=1 || capture_stderr=1
   shift
-fi
+done
 
 local key=$1 fd pid
 local -a command_args=( "${@:2}" )
@@ -27,7 +33,7 @@ typeset -ga _fsh_command_output
 [[ -n $key && $#command_args -gt 0 ]] || return 2
 cache_seconds=${_fsh_state[$key-cache-seconds]:-$_fsh_chroma_cache_seconds}
 
-if (( ${+_fsh_state[$key-cache-ready]} )); then
+if (( ! raw && ${+_fsh_state[$key-cache-ready]} )); then
   _fsh_command_output=( "${(@f)_fsh_state[$key-cache]}" )
 else
   _fsh_command_output=()

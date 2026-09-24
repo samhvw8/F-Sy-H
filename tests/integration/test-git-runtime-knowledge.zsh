@@ -12,6 +12,9 @@ typeset -gx XDG_CACHE_HOME=$fixture_root/cache-home
 command mkdir -p -- "$ZDOTDIR"
 zstyle ':fsh:config' work-dir "$fixture_root/work"
 typeset -r original_pwd=$PWD
+# Test this checkout even when the caller exports another F-Sy-H in FPATH.
+fpath=( "$plugin_root"/{functions,completions,chroma} \
+  "${(@)fpath:#$plugin_root/(functions|completions|chroma)}" )
 
 source "$plugin_root/F-Sy-H.plugin.zsh"
 _fsh_chroma_git
@@ -61,6 +64,14 @@ _fsh_chroma_git_get_subcommands
 [[ ${(j:,:)_fsh_chroma_git_aliases} == 'safe commit' ]]
 [[ ${_fsh_state[chroma-git-runtime-safe-subcommands]} == $'commit\nnebula' ]]
 
+# The warm path compares the cached text as it is. Splitting `git help -a'
+# into lines on every keystroke cost as much as the rest of the lookup.
+typeset -ga _fsh_command_output
+_fsh_command_output=( sentinel )
+_fsh_chroma_git_get_subcommands
+[[ ${(j:,:)reply} == 'commit,nebula,safe' ]]
+(( ! $#_fsh_command_output ))
+
 # Repository-local aliases from one directory must not leak through the cache
 # after changing to another directory.
 command mkdir -p -- "$fixture_root/repo-a" "$fixture_root/repo-b"
@@ -109,8 +120,8 @@ expected_highlights="0 3 ${_fsh_styles[command]}"$'\n'\
 [[ ${(F)reply} == "$expected_highlights" ]]
 
 typeset git_source=$(<"$plugin_root/chroma/_fsh_chroma_git")
-[[ $git_source == *'_fsh_async_command chroma-git-subcommands'* ]]
-[[ $git_source == *'_fsh_async_command "$alias_cache_key"'* ]]
-[[ $git_source == *'_fsh_async_command --capture-stderr "$key" env LC_ALL=C git "$subcommand" -h'* ]]
+[[ $git_source == *'_fsh_async_command --raw chroma-git-subcommands'* ]]
+[[ $git_source == *'_fsh_async_command --raw "$alias_cache_key"'* ]]
+[[ $git_source == *'_fsh_async_command --raw --capture-stderr "$key" env LC_ALL=C git "$subcommand" -h'* ]]
 
 fsh_plugin_unload

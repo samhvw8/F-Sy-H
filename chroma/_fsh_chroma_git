@@ -827,19 +827,19 @@ _fsh_chroma_git_prepare_runtime_options() {
   key=chroma-git-options-$safe_subcommand
   _fsh_state[$key-cache-seconds]=$(( 15 * 60 ))
   _fsh_state[$key-success-statuses]="0 129"
-  _fsh_async_command --capture-stderr "$key" env LC_ALL=C git "$subcommand" -h
-  runtime_output=( "${_fsh_command_output[@]}" )
+  _fsh_async_command --raw --capture-stderr "$key" env LC_ALL=C git "$subcommand" -h
   (( ${_fsh_state[$key-cache-ready]:-0} )) || return 0
 
   # Parsing the help text costs about two milliseconds; reuse the result while
-  # the cached output is unchanged.
+  # the cached output is unchanged. The text is split into lines only to parse.
   if (( ${+_fsh_state[$key-parsed-source]} )) &&
-      [[ ${_fsh_state[$key-parsed-source]} == "${(F)runtime_output}" ]]; then
+      [[ ${_fsh_state[$key-parsed-source]} == "${_fsh_state[$key-cache]}" ]]; then
     runtime_options=( ${(f)_fsh_state[$key-parsed]} )
   else
+    runtime_output=( "${(@f)_fsh_state[$key-cache]}" )
     _fsh_chroma_git_parse_options "${runtime_output[@]}"
     runtime_options=( "${_fsh_git_parse_reply[@]}" )
-    _fsh_state[$key-parsed-source]=${(F)runtime_output}
+    _fsh_state[$key-parsed-source]=${_fsh_state[$key-cache]}
     _fsh_state[$key-parsed]=${(F)runtime_options}
   fi
   (( $#runtime_options )) || return 0
@@ -906,24 +906,23 @@ _fsh_chroma_git_get_subcommands() {
   )
 
   _fsh_state[chroma-git-subcommands-cache-seconds]=$(( 15 * 60 ))
-  _fsh_async_command chroma-git-subcommands env LC_ALL=C git help -a
-  runtime_output=( "${_fsh_command_output[@]}" )
+  _fsh_async_command --raw chroma-git-subcommands env LC_ALL=C git help -a
 
   # Git aliases can be repository-local. Keep their cache distinct from the
   # repository-independent command and option caches above.
   alias_cache_key="chroma-git-aliases-${PWD:A}"
   _fsh_state[$alias_cache_key-cache-seconds]=$(( 15 * 60 ))
   _fsh_state[$alias_cache_key-success-statuses]="0 1"
-  _fsh_async_command "$alias_cache_key" env LC_ALL=C git config --get-regexp '^alias\.'
-  alias_output=( "${_fsh_command_output[@]}" )
+  _fsh_async_command --raw "$alias_cache_key" env LC_ALL=C git config --get-regexp '^alias\.'
   typeset -ga _fsh_chroma_git_aliases
 
   # The result depends only on the two cached outputs and on the last valid
   # list, which only this function writes from those outputs. Parsing `git
   # help -a' costs about a millisecond per keystroke, so while both outputs are
-  # unchanged the previous result is reused.
-  memo_source="${_fsh_state[chroma-git-subcommands-cache-ready]:-0}:${(F)runtime_output}"$'\0'
-  memo_source+="${_fsh_state[$alias_cache_key-cache-ready]:-0}:${(F)alias_output}"
+  # unchanged the previous result is reused. The outputs are compared as the
+  # cached text and split into lines only to parse them.
+  memo_source="${_fsh_state[chroma-git-subcommands-cache-ready]:-0}:${_fsh_state[chroma-git-subcommands-cache]-}"$'\0'
+  memo_source+="${_fsh_state[$alias_cache_key-cache-ready]:-0}:${_fsh_state[$alias_cache_key-cache]-}"
   if (( ${+_fsh_state[chroma-git-subcommands-memo-source]} )) &&
       [[ ${_fsh_state[chroma-git-subcommands-memo-source]} == "$memo_source" ]]; then
     reply=( ${(f)_fsh_state[chroma-git-subcommands-memo-reply]} )
@@ -933,6 +932,7 @@ _fsh_chroma_git_get_subcommands() {
   fi
 
   if (( ${_fsh_state[chroma-git-subcommands-cache-ready]:-0} )); then
+    runtime_output=( "${(@f)_fsh_state[chroma-git-subcommands-cache]}" )
     _fsh_chroma_git_parse_subcommands "${runtime_output[@]}"
     runtime_subcommands=( "${_fsh_git_parse_reply[@]}" )
     if (( $#runtime_subcommands )); then
@@ -948,6 +948,7 @@ _fsh_chroma_git_get_subcommands() {
 
   _fsh_chroma_git_aliases=()
   if (( ${_fsh_state[$alias_cache_key-cache-ready]:-0} )); then
+    alias_output=( "${(@f)_fsh_state[$alias_cache_key-cache]}" )
     for line in "${alias_output[@]}"; do
       alias_name=${line%%[[:space:]]*}
       alias_value=${line#${alias_name}}
