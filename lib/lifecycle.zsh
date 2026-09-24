@@ -141,6 +141,8 @@ _fsh_lifecycle_begin() {
     _fsh_assigns_seen 1
     _fsh_command_output 1
     _fsh_command_type_cache 1
+    _fsh_command_type_memo 1
+    _fsh_command_type_memo_pwd 1
     _fsh_complex_brackets 1
     _fsh_decorations 1
     _fsh_last_commands 1

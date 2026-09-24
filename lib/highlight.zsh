@@ -32,6 +32,11 @@
 # -------------------------------------------------------------------------------------------------
 
 typeset -gA _fsh_command_type_cache _fsh_blocklist_patterns
+# Command types resolved for the line being edited. Only an executed command
+# can define, hash or remove a command, so the preexec hook clears it; a
+# change of directory clears it too, because relative directories are types.
+typeset -gA _fsh_command_type_memo
+typeset -g _fsh_command_type_memo_pwd
 typeset -g _fsh_work_dir
 
 : ${_fsh_work_dir:=$_fsh_base_dir}
@@ -363,6 +368,7 @@ typeset -ga _fsh_last_commands
 # The result will be stored in REPLY.
 _fsh_highlight_main_type() {
   REPLY=$_fsh_command_type_cache[(e)$1]
+  [[ -z $REPLY ]] && REPLY=$_fsh_command_type_memo[(e)$1]
   [[ -z $REPLY ]] && {
     if zmodload -e zsh/parameter; then
       if (( $+aliases[(e)$1] )); then
@@ -399,8 +405,9 @@ _fsh_highlight_main_type() {
         }
       }
     }
-    _fsh_command_type_cache[(e)$1]=$REPLY
+    _fsh_command_type_memo[(e)$1]=$REPLY
   }
+  _fsh_command_type_cache[(e)$1]=$REPLY
 }
 
 # Below are variables that must be defined in outer
@@ -1500,6 +1507,13 @@ _fsh_highlight_dollar_string() {
 _fsh_highlight_init() {
   _fsh_complex_brackets=()
   _fsh_command_type_cache=()
+  # Without the preexec hook nothing marks the end of a command line, so keep
+  # the per-pass behavior.
+  if [[ $_fsh_command_type_memo_pwd != "$PWD" ]] ||
+      (( ! ${preexec_functions[(Ie)_fsh_preexec_hook]:-0} )); then
+    _fsh_command_type_memo=()
+    _fsh_command_type_memo_pwd=$PWD
+  fi
 }
 
 typeset -ga _fsh_style_ranges

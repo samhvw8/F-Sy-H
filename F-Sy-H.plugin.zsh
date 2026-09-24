@@ -521,6 +521,7 @@ _fsh_preexec_hook() {
   _fsh_main_cache=()
   _fsh_regions=()
   _fsh_decorations=()
+  _fsh_command_type_memo=()
 
   if (( ${+parameters[_fsh_lifecycle_refresh_pending]} && _fsh_lifecycle_refresh_pending &&
       ${+functions[_fsh_lifecycle_refresh]} )); then

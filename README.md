@@ -368,6 +368,7 @@ zsh -f tests/integration/test-autosuggest-compat.zsh
 zsh -f tests/integration/test-theme-persistence.zsh
 zsh -f tests/integration/test-chroma-registry.zsh
 zsh -f tests/integration/test-chroma-regions.zsh
+zsh -f tests/integration/test-command-type-memo.zsh
 zsh -f tests/integration/test-color-preview-regions.zsh
 zsh -f tests/integration/test-async-chroma.zsh
 zsh -f tests/integration/test-theme-validator.zsh
