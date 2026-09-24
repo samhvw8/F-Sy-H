@@ -4,27 +4,35 @@
 # This private library records the shell resources changed by the entrypoint.
 # It has no top-level effects other than defining the lifecycle functions below.
 
-_fsh_lifecycle_function_owned() {
+# Set reply to the given names that this plugin owns as functions. Filtering a
+# whole list in one expansion avoids a function call per name when the caller's
+# shell defines hundreds of functions.
+_fsh_lifecycle_owned_functions() {
   builtin emulate -L zsh
 
-  case $1 in
-    (_fsh_lifecycle_*) return 1 ;;
-    # _zsh_highlight is the compatibility name this plugin takes over so
-    # that zsh-history-substring-search does not bind its own stub to it;
-    # owning it here is what restores whatever held the name before us.
-    (_fsh_*|fsh_chroma|fsh_theme|_zsh_highlight|add-zsh-hook|add-zle-hook-widget|azhw:*|is-at-least|colors) return 0 ;;
-    (*) return 1 ;;
-  esac
+  # _zsh_highlight is the compatibility name this plugin takes over so
+  # that zsh-history-substring-search does not bind its own stub to it;
+  # owning it here is what restores whatever held the name before us.
+  reply=( ${${(M)@:#(_fsh_*|fsh_chroma|fsh_theme|_zsh_highlight|add-zsh-hook|add-zle-hook-widget|azhw:*|is-at-least|colors)}:#_fsh_lifecycle_*} )
+}
+
+_fsh_lifecycle_function_owned() {
+  local -a reply
+  _fsh_lifecycle_owned_functions "$1"
+  (( $#reply ))
+}
+
+# Set reply to the given names that this plugin owns as parameters.
+_fsh_lifecycle_owned_parameters() {
+  builtin emulate -L zsh
+
+  reply=( ${${(M)@:#_fsh_*}:#_fsh_lifecycle_*} )
 }
 
 _fsh_lifecycle_parameter_owned() {
-  builtin emulate -L zsh
-
-  case $1 in
-    (_fsh_lifecycle_*) return 1 ;;
-    (_fsh_*) return 0 ;;
-    (*) return 1 ;;
-  esac
+  local -a reply
+  _fsh_lifecycle_owned_parameters "$1"
+  (( $#reply ))
 }
 
 _fsh_lifecycle_parameter_declaration() {
@@ -122,7 +130,7 @@ _fsh_lifecycle_begin() {
   builtin emulate -L zsh
 
   local name module REPLY
-  local -a loaded_modules
+  local -a loaded_modules reply
 
   typeset -gA _fsh_lifecycle_original_function_set=()
   typeset -gA _fsh_lifecycle_original_functions=()
@@ -185,16 +193,16 @@ _fsh_lifecycle_begin() {
     _fsh_lifecycle_original_module_set[$module]=1
   done
 
-  for name in ${(k)functions}; do
-    _fsh_lifecycle_function_owned "$name" || continue
+  _fsh_lifecycle_owned_functions ${(k)functions}
+  for name in "${reply[@]}"; do
     _fsh_lifecycle_original_function_set[$name]=1
     _fsh_lifecycle_original_functions[$name]=${functions[$name]}
   done
 
   # The declaration restores a prior parameter on unload; the signature is
   # what later accountings compare against.
-  for name in ${(k)parameters}; do
-    _fsh_lifecycle_parameter_owned "$name" || continue
+  _fsh_lifecycle_owned_parameters ${(k)parameters}
+  for name in "${reply[@]}"; do
     _fsh_lifecycle_parameter_declaration "$name"
     _fsh_lifecycle_original_parameter_set[$name]=1
     _fsh_lifecycle_original_parameters[$name]=$REPLY
@@ -222,14 +230,12 @@ _fsh_lifecycle_finalize() {
   builtin emulate -L zsh
 
   local name module entry signature REPLY
-  local -a names loaded_modules
+  local -a names loaded_modules reply
 
   (( _fsh_lifecycle_started )) || return 1
 
-  names=( ${(k)_fsh_lifecycle_original_function_set} )
-  for name in ${(k)functions}; do
-    _fsh_lifecycle_function_owned "$name" && names+=( "$name" )
-  done
+  _fsh_lifecycle_owned_functions ${(k)functions}
+  names=( ${(k)_fsh_lifecycle_original_function_set} "${reply[@]}" )
   typeset -U names
   for name in "${names[@]}"; do
     # The compatibility callback is installed once, never by a lazy operation.
@@ -253,10 +259,8 @@ _fsh_lifecycle_finalize() {
       _fsh_lifecycle_pending_autoloads[$name]=1
   done
 
-  names=( ${(k)_fsh_lifecycle_original_parameter_set} )
-  for name in ${(k)parameters}; do
-    _fsh_lifecycle_parameter_owned "$name" && names+=( "$name" )
-  done
+  _fsh_lifecycle_owned_parameters ${(k)parameters}
+  names=( ${(k)_fsh_lifecycle_original_parameter_set} "${reply[@]}" )
   typeset -U names
   for name in "${names[@]}"; do
     if (( ${+parameters[$name]} )); then
@@ -326,6 +330,7 @@ _fsh_lifecycle_account_materialized() {
   builtin emulate -L zsh
 
   local name REPLY
+  local -a reply
 
   (( _fsh_lifecycle_started && _fsh_lifecycle_loaded )) || return 1
 
@@ -339,8 +344,8 @@ _fsh_lifecycle_account_materialized() {
       builtin unset "_fsh_lifecycle_pending_autoloads[$name]"
   done
 
-  for name in ${(k)functions}; do
-    _fsh_lifecycle_function_owned "$name" || continue
+  _fsh_lifecycle_owned_functions ${(k)functions}
+  for name in "${reply[@]}"; do
     # The compatibility callback is installed once, never by a lazy operation.
     [[ $name == _zsh_highlight ]] && continue
     (( ${+_fsh_lifecycle_applied_function_set[$name]} ||
@@ -714,7 +719,9 @@ fsh_plugin_unload() {
   fi
 
   helpers=(
+    _fsh_lifecycle_owned_functions
     _fsh_lifecycle_function_owned
+    _fsh_lifecycle_owned_parameters
     _fsh_lifecycle_parameter_owned
     _fsh_lifecycle_parameter_declaration
     _fsh_lifecycle_parameter_signature

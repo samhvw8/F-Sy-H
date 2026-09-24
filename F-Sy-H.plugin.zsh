@@ -36,7 +36,13 @@ local -r plugin_dir=${source_path:h}
 local load_status configured_value configured_pattern
 local -a lifecycle_collisions lifecycle_modules configured_patterns
 
-lifecycle_modules=( ${(f)"$(zmodload)"} )
+# Only membership matters here, so read the module table without a fork when
+# zsh/parameter is already loaded, as it is in most interactive shells.
+if zmodload -e zsh/parameter; then
+  lifecycle_modules=( ${(k)modules[(R)loaded]} )
+else
+  lifecycle_modules=( ${(f)"$(zmodload)"} )
+fi
 
 (( ${+_fsh_lifecycle_loaded} && _fsh_lifecycle_loaded )) && return 0
 
