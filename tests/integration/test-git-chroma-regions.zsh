@@ -230,6 +230,22 @@ fsh_assert_exact_regions "git commit -m '$subject73'" \
   "14 89 ${_fsh_styles[double-quoted-argument]}" || exit $?
 _fsh_git_message_length=72
 
+# `-<n>' limits the number of commits (git-log(1)); it is not a table entry
+# because the digits vary. Other words starting with a digit stay unknown.
+fsh_assert_exact_regions 'git log -5' \
+  "0 3 ${_fsh_styles[command]}" \
+  "4 7 ${_fsh_styles[subcommand]}" \
+  "8 10 ${_fsh_styles[single-hyphen-option]}" || exit $?
+fsh_assert_exact_regions 'git log --oneline -15' \
+  "0 3 ${_fsh_styles[command]}" \
+  "4 7 ${_fsh_styles[subcommand]}" \
+  "8 17 ${_fsh_styles[double-hyphen-option]}" \
+  "18 21 ${_fsh_styles[single-hyphen-option]}" || exit $?
+fsh_assert_exact_regions 'git log -5x' \
+  "0 3 ${_fsh_styles[command]}" \
+  "4 7 ${_fsh_styles[subcommand]}" \
+  "8 11 ${_fsh_styles[incorrect-subtle]}" || exit $?
+
 # Cold knowledge must not turn an existing branch red. Warm the fixture's
 # query caches explicitly outside highlighting, then retain exact warm-region
 # assertions below. Real worker/callback transitions have their own PTY test.

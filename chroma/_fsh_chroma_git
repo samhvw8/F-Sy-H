@@ -488,7 +488,7 @@ _fsh_chroma_git_def=(
                             <<>> NO-OP // ::_fsh_chroma_option_action
                             <<>> NO-OP // ::_fsh_chroma_option_argument_action
 
-             || (-h|--help|--follow|--decorate|--no-decorate|--source|--use-mailmap|--full-diff|
+             || (-h|--help|-<->|--follow|--decorate|--no-decorate|--source|--use-mailmap|--full-diff|
                  --log-size|--all-match|--invert-grep|-i|--regexp-ignore-case|--basic-regexp|
                  -E|--extended-regexp|-F|--fixed-strings|-P|--perl-regexp|--remove-empty|
                  --merges|--no-merges|--no-min-parents|--no-max-parents|--first-parent|

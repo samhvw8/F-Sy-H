@@ -211,6 +211,13 @@ _fsh_chroma_process_token() {
         __var_name="${__the_hash_name}[${${${${(M)__wrd#?*=}:+${__wrd%=*}=}:-$__wrd}}-opt-action]"
         __split=( "${(@s://:P)__var_name}" )
         [[ ${#__split} -eq 1 && -z "${__split[1]}" ]] && __split=()
+        # A numeric option such as git log's `-5' matches the literal `-<->'
+        # entry, since the digits cannot be listed.
+        (( ! ${#__split} )) && [[ "$__wrd" = -<-> ]] && {
+          __var_name="${__the_hash_name}[-<->-opt-action]"
+          __split=( "${(@s://:P)__var_name}" )
+          [[ ${#__split} -eq 1 && -z "${__split[1]}" ]] && __split=()
+        }
         # If no result, then try with catch-all entry
         (( ! ${#__split} )) && {
           __var_name="${__the_hash_name}[*-opt-action]"
