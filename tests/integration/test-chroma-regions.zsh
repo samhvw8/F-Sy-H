@@ -70,6 +70,19 @@ fsh_assert_exact_regions 'zi help' \
   '0 2 fg=1' \
   '3 7 fg=2'
 
+# The user and separator regions of an ssh destination end inside the word.
+# Stub the lookups so the result does not depend on this machine's accounts.
+zstyle ':completion:*:users' users fsh-known-user
+zstyle ':completion:*:hosts' hosts fsh-known-host
+_fsh_styles[subtle-separator]=fg=17
+fsh_assert_exact_regions 'ssh fsh-unknown-user@fsh-known-host' \
+  '0 3 fg=1' \
+  '4 20 fg=6' \
+  '20 21 fg=17' \
+  '21 35 fg=7'
+zstyle -d ':completion:*:users' users
+zstyle -d ':completion:*:hosts' hosts
+
 # Keep Docker validation deterministic and independent of a local daemon.
 _fsh_state[chroma-docker-list-cache]=$'deadbeef'
 _fsh_state[chroma-docker-list-cache-ready]=1

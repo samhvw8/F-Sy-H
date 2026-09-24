@@ -81,11 +81,11 @@ local -a match mbegin mend completions_users completions_host
                                     || user_style=${_fsh_theme_name}incorrect-subtle
                             fi
                             [[ -n $user_style ]] \
-                                && (( __start=__start_pos-${#PREBUFFER}, __end=__end_pos-${#PREBUFFER}-(mend[5]-mend[2]), __start >= 0 )) \
+                                && (( __start=__start_pos-${#PREBUFFER}, __end=__end_pos-${#PREBUFFER}-(mend[4]-mend[2]), __start >= 0 )) \
                                 && reply+=("$__start $__end ${_fsh_styles[$user_style]}")
                         }
                     [[ -n $match[3] ]] \
-                        && (( __start=__start_pos-${#PREBUFFER}+(mbegin[3]-mbegin[1]), __end=__end_pos-${#PREBUFFER}-(mend[5]-mend[3]), __start >= 0 )) \
+                        && (( __start=__start_pos-${#PREBUFFER}+(mbegin[3]-mbegin[1]), __end=__end_pos-${#PREBUFFER}-(mend[4]-mend[3]), __start >= 0 )) \
                         && reply+=("$__start $__end ${_fsh_styles[${_fsh_theme_name}subtle-separator]}")
 
                     host_style=
