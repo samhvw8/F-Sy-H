@@ -346,6 +346,35 @@ fsh_assert_exact_regions 'git branch -d missing' \
   "11 13 ${_fsh_styles[single-hyphen-option]}" \
   "14 21 ${_fsh_styles[incorrect-subtle]}" || exit $?
 
+# A branch created after the list was cached is missing from it until the
+# refresh lands. While that refresh is in flight the stale list cannot prove
+# the name wrong, so the name keeps the default style instead of an error.
+command git branch fresh
+() {
+  local REPLY __style
+  _fsh_chroma_git_query 10 0 for-each-ref '--format=%(refname:short)' || true
+  _fsh_state[$REPLY-pending]=1
+  _fsh_state[$REPLY-started-at]=$SECONDS
+  typeset -g query_ref=$REPLY
+}
+fsh_assert_exact_regions 'git branch -D fresh' \
+  "0 3 ${_fsh_styles[command]}" \
+  "4 10 ${_fsh_styles[subcommand]}" \
+  "11 13 ${_fsh_styles[single-hyphen-option]}" \
+  "14 19 ${_fsh_styles[default]}" || exit $?
+fsh_assert_exact_regions 'git branch -D topic' \
+  "0 3 ${_fsh_styles[command]}" \
+  "4 10 ${_fsh_styles[subcommand]}" \
+  "11 13 ${_fsh_styles[single-hyphen-option]}" \
+  "14 19 ${_fsh_styles[correct-subtle]}" || exit $?
+_fsh_state[$query_ref-pending]=0
+builtin unset "_fsh_state[$query_ref-started-at]"
+fsh_assert_exact_regions 'git branch -D fresh' \
+  "0 3 ${_fsh_styles[command]}" \
+  "4 10 ${_fsh_styles[subcommand]}" \
+  "11 13 ${_fsh_styles[single-hyphen-option]}" \
+  "14 19 ${_fsh_styles[incorrect-subtle]}" || exit $?
+
 # A different directory must not inherit this repository's warm branch cache.
 command mkdir -- "$fixture_root/other"
 builtin cd -- "$fixture_root/other"

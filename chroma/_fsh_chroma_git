@@ -1105,6 +1105,11 @@ _fsh_chroma_git_verify_branch() {
     __style=${_fsh_theme_name}correct-subtle; return 0
   } elif [[ -n ${_fsh_command_output[(r)origin/$_wrd]} ]] {
     __style=${_fsh_theme_name}correct-subtle; return 0
+  } elif (( ${_fsh_state[$REPLY-pending]:-0} )) {
+    # The list is stale and being refreshed: a branch created since it was
+    # cached is missing from it, so a miss proves nothing yet.
+    (( ${+__query_pending} )) && __query_pending=1
+    __style=${_fsh_theme_name}default; return 2
   } else {
     __style=${_fsh_theme_name}incorrect-subtle; return 1
   }
