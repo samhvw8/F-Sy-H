@@ -54,6 +54,13 @@ _fsh_chroma_git_get_subcommands
 [[ ${(j:,:)reply} == 'commit,nebula,safe' ]]
 (( ! reply[(Ie)shell-alias] ))
 
+# An unchanged cache reuses the parsed result with every output it sets.
+reply=() _fsh_chroma_git_aliases=() _fsh_state[chroma-git-runtime-safe-subcommands]=
+_fsh_chroma_git_get_subcommands
+[[ ${(j:,:)reply} == 'commit,nebula,safe' ]]
+[[ ${(j:,:)_fsh_chroma_git_aliases} == 'safe commit' ]]
+[[ ${_fsh_state[chroma-git-runtime-safe-subcommands]} == $'commit\nnebula' ]]
+
 # Repository-local aliases from one directory must not leak through the cache
 # after changing to another directory.
 command mkdir -p -- "$fixture_root/repo-a" "$fixture_root/repo-b"
