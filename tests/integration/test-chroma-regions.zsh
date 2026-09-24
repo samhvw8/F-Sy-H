@@ -83,6 +83,37 @@ fsh_assert_exact_regions 'ssh fsh-unknown-user@fsh-known-host' \
 zstyle -d ':completion:*:users' users
 zstyle -d ':completion:*:hosts' hosts
 
+# Without a configured user list the remote user is not judged: accounts on
+# this machine say nothing about accounts on the remote one. zsh fills
+# $userdirs, the local accounts, only in an interactive shell.
+zsh -f -i -c "
+  fpath=( ${(q)plugin_root}/{functions,completions,chroma} \$fpath )
+  source ${(q)plugin_root}/F-Sy-H.plugin.zsh
+  source ${(q)plugin_root}/tests/integration/chroma-fixture.zsh
+  (( \${#userdirs} )) || builtin print -u2 -r -- 'f-sy-h: no local accounts in \$userdirs'
+  _fsh_styles[command]=fg=1 _fsh_styles[subtle-separator]=fg=17 _fsh_styles[mathnum]=fg=18
+  fsh_assert_exact_regions 'ssh fsh-remote-only-user@10.0.0.1' \
+    '0 3 fg=1' \
+    '24 25 fg=17' \
+    '25 33 fg=18'
+" </dev/null
+
+# ssh parses options after the destination too; the first word that is
+# neither an option nor an option's value is the remote command.
+fsh_assert_exact_regions 'ssh fsh-host -v' \
+  '0 3 fg=1' \
+  '13 15 fg=4'
+fsh_assert_exact_regions 'ssh fsh-host -vvv -p 22 ls -v' \
+  '0 3 fg=1' \
+  '13 17 fg=4' \
+  '18 20 fg=4' \
+  '24 26 fg=1' \
+  '27 29 fg=4'
+fsh_assert_exact_regions 'ssh fsh-host -R 8080:localhost:80 ls' \
+  '0 3 fg=1' \
+  '13 15 fg=4' \
+  '34 36 fg=1'
+
 # Keep Docker validation deterministic and independent of a local daemon.
 _fsh_state[chroma-docker-list-cache]=$'deadbeef'
 _fsh_state[chroma-docker-list-cache-ready]=1

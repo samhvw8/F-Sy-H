@@ -52,7 +52,7 @@ local -a match mbegin mend completions_users completions_host
         # Detected option, add style for it.
         [[ "$__wrd" = --* ]] && __style=${_fsh_theme_name}double-hyphen-option || \
                                 __style=${_fsh_theme_name}single-hyphen-option
-        if [[ "$__wrd" = (-b|-c|-D|-E|-e|-F|-I|-i|-J|-L|-l|-m|-O|-o|-p|Q|R|-S|-W|-w) ]]; then
+        if [[ "$__wrd" = (-B|-b|-c|-D|-E|-e|-F|-I|-i|-J|-L|-l|-m|-O|-o|-P|-p|-Q|-R|-S|-W|-w) ]]; then
             _fsh_state[chroma-ssh-skip-two]=1
         fi
     else
@@ -61,6 +61,15 @@ local -a match mbegin mend completions_users completions_host
         else
             # Count non-option tokens.
             (( _fsh_state[chroma-ssh-counter] += 1 ))
+            if (( _fsh_state[chroma-ssh-counter] > 1 )); then
+                # ssh reads options after the destination as well; the first
+                # other word is the remote command. Hand it and the rest of
+                # the line to the main loop as a command, as the precommand
+                # handler does.
+                _fsh_last_commands+=( $__wrd )
+                (( this_word = 1, next_word &= ~8192 ))
+                return 1
+            fi
             if [[ "${_fsh_state[chroma-ssh-counter]}" -eq 1 ]]; then
                 if [[ $__arg = (#b)(([^@]#)(@)|)(*) ]]
                 then
@@ -71,12 +80,10 @@ local -a match mbegin mend completions_users completions_host
                                 # Zstyle clobbers reply for sure
                                 zstyle -a ":completion:*:users" users completions_users
                             }
+                            # Only a configured list judges the user: the local
+                            # accounts in $userdirs say nothing about the remote host.
                             if (( $#completions_users )); then
                                 [[ $match[2] = ${~${:-(${(j:|:)completions_users})}} ]] \
-                                    && user_style=${_fsh_theme_name}correct-subtle \
-                                    || user_style=${_fsh_theme_name}incorrect-subtle
-                            elif (( $#userdirs )); then
-                                [[ -n $userdirs[$match[2]] ]] \
                                     && user_style=${_fsh_theme_name}correct-subtle \
                                     || user_style=${_fsh_theme_name}incorrect-subtle
                             fi
@@ -133,8 +140,6 @@ local -a match mbegin mend completions_users completions_host
                 else
                     __style=${_fsh_theme_name}incorrect-subtle
                 fi
-
-                (( next_word = 1 ))
 
             fi
         fi
